@@ -25,9 +25,23 @@
 /// `dst` and `src` must each point to at least `n` bytes of valid memory.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn my_memcpy(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    use core::arch::asm;
     // TODO: Implement memcpy
     // Hint: read bytes from src one by one and write to dst
-    todo!()
+
+    asm!(
+        "1:",
+        "ldrb {tmp:w}, [{src}], #1",  // 从 [src] 加载 1 字节到 tmp，src += 1
+        "strb {tmp:w}, [{dest}], #1", // 将 tmp 存入 [dest]，dest += 1
+        "subs {n}, {n}, #1",          // n = n - 1 并更新状态标志
+        "bne 1b",                     // 如果 n != 0 则跳转回标签 1
+        src = inout(reg) src => _,
+        dest = inout(reg) dst => _,
+        n = inout(reg) n => _,
+        tmp = out(reg) _,
+    );
+
+    dst
 }
 
 /// Set `n` bytes starting at `dst` to the value `c`.
