@@ -25,21 +25,14 @@
 /// `dst` and `src` must each point to at least `n` bytes of valid memory.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn my_memcpy(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    use core::arch::asm;
     // TODO: Implement memcpy
     // Hint: read bytes from src one by one and write to dst
-
-    asm!(
-        "1:",
-        "ldrb {tmp:w}, [{src}], #1",  // 从 [src] 加载 1 字节到 tmp，src += 1
-        "strb {tmp:w}, [{dest}], #1", // 将 tmp 存入 [dest]，dest += 1
-        "subs {n}, {n}, #1",          // n = n - 1 并更新状态标志
-        "bne 1b",                     // 如果 n != 0 则跳转回标签 1
-        src = inout(reg) src => _,
-        dest = inout(reg) dst => _,
-        n = inout(reg) n => _,
-        tmp = out(reg) _,
-    );
+    //
+    for offset in 0..n {
+        unsafe {
+            *dst.add(offset) = *src.add(offset);
+        }
+    }
 
     dst
 }
@@ -53,7 +46,13 @@ pub unsafe extern "C" fn my_memcpy(dst: *mut u8, src: *const u8, n: usize) -> *m
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn my_memset(dst: *mut u8, c: u8, n: usize) -> *mut u8 {
     // TODO: Implement memset
-    todo!()
+    for offset in 0..n {
+        unsafe {
+            *dst.add(offset) = c;
+        }
+    }
+
+    dst
 }
 
 /// Copy `n` bytes from `src` to `dst`, correctly handling overlapping memory.
@@ -66,7 +65,18 @@ pub unsafe extern "C" fn my_memset(dst: *mut u8, c: u8, n: usize) -> *mut u8 {
 pub unsafe extern "C" fn my_memmove(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     // TODO: Implement memmove
     // Hint: when dst > src and regions overlap, copy backwards (from end to start)
-    todo!()
+
+    if dst as *const u8 > src {
+        for offset in (0..n).rev() {
+            *dst.add(offset) = *src.add(offset);
+        }
+    } else if src > dst as *const u8 {
+        for offset in 0..n {
+            *dst.add(offset) = *src.add(offset);
+        }
+    }
+
+    dst
 }
 
 /// Return the length of a null-terminated byte string, excluding the trailing null.
@@ -76,7 +86,12 @@ pub unsafe extern "C" fn my_memmove(dst: *mut u8, src: *const u8, n: usize) -> *
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn my_strlen(s: *const u8) -> usize {
     // TODO: Implement strlen
-    todo!()
+    let mut len: usize = 0;
+
+    while *s.add(len) != 0 {
+        len += 1
+    }
+    len
 }
 
 /// Compare two null-terminated byte strings.
@@ -91,7 +106,19 @@ pub unsafe extern "C" fn my_strlen(s: *const u8) -> usize {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn my_strcmp(s1: *const u8, s2: *const u8) -> i32 {
     // TODO: Implement strcmp
-    todo!()
+
+    let mut offset: usize = 0;
+    loop {
+        let c1 = *s1.add(offset);
+        let c2 = *s2.add(offset);
+
+        if c1 != c2 {
+            return c1 as i32 - c2 as i32;
+        } else if c1 == 0 && c2 == 0 {
+            return 0;
+        }
+        offset += 1;
+    }
 }
 
 // ============================================================
