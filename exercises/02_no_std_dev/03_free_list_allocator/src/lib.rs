@@ -116,10 +116,53 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // - If found, remove it from the list (update prev's next or the free_list head)
         // - Return curr as *mut u8
 
+        let mut prev_ptr = self.free_list_head();
+        let mut cur = self.free_list_head();
+
+        while !cur.is_null() {
+            let aligned = ((cur as usize + align - 1) & !(align - 1)) as *mut u8;
+            let front_padding = cur as usize - aligned as usize;
+
+            if (*cur).size - front_padding >= size {
+                // TODO: extract used memory and return unused part to free_list
+                if cur == prev_ptr {
+                    self.set_free_list_head((*cur).next);
+                } else {
+                    (*prev_ptr).next = (*cur).next;
+                }
+                // NOTE: there may be some front_padding bytes wasted due to alignment!
+                return aligned;
+            } else {
+                prev_ptr = cur;
+                cur = (*cur).next;
+            }
+        }
         // TODO: Step 2 — no suitable block in free_list, allocate from bump region
         //
         // Same logic as 02_bump_allocator's alloc
-        todo!()
+        loop {
+            let current_addr = self.bump_next.load(core::sync::atomic::Ordering::SeqCst);
+            let aligned = (current_addr + align - 1) & !(align - 1);
+
+            let alloc_end = match aligned.checked_add(size) {
+                None => return null_mut(),
+                Some(v) => v,
+            };
+
+            if alloc_end > self.heap_end {
+                return null_mut();
+            }
+
+            match self.bump_next.compare_exchange(
+                current_addr,
+                alloc_end,
+                core::sync::atomic::Ordering::SeqCst,
+                core::sync::atomic::Ordering::SeqCst,
+            ) {
+                Ok(_) => return aligned as *mut u8,
+                Err(_) => continue,
+            }
+        }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -131,7 +174,11 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // 1. Cast ptr to *mut FreeBlock
         // 2. Write FreeBlock { size, next: current list head }
         // 3. Update free_list head to ptr
-        todo!()
+        let block = ptr as *mut FreeBlock;
+        (*block).size = size;
+        (*block).next = self.free_list_head();
+
+        self.set_free_list_head(block);
     }
 }
 
