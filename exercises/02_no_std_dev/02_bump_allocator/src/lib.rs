@@ -93,7 +93,7 @@ unsafe impl GlobalAlloc for BumpAllocator {
                 Ordering::SeqCst,
                 Ordering::SeqCst,
             ) {
-                Ok(_) => aligned as *mut u8,
+                Ok(_) => return aligned as *mut u8,
                 Err(_) => continue,
             };
         }
