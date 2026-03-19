@@ -158,6 +158,28 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     ret
 }
 
+#[cfg(all(target_arch = "riscv64", target_os = "linux"))]
+pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isize {
+    // TODO: Implement aarch64 syscall using core::arch::asm!
+    // Hints:
+    //   - "svc #0" instruction
+    //   - in("x8") id
+    //   - inlateout("x0") arg0 => ret
+    //   - in("x1") arg1, in("x2") arg2
+    let mut ret: isize = 0;
+
+    asm!(
+        "ecall",
+        in("a7") id,
+        inout("a0") arg0 as isize => ret,
+        in("a1") arg1,
+        in("a2") arg2,
+        options(nostack, preserves_flags)
+    );
+
+    ret
+}
+
 // Non-Linux platforms: provide a stub so the code compiles
 #[cfg(not(target_os = "linux"))]
 pub unsafe fn syscall3(_id: usize, _arg0: usize, _arg1: usize, _arg2: usize) -> isize {
