@@ -154,6 +154,8 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
         in("x2") arg2,
 
     );
+
+    ret
 }
 
 // Non-Linux platforms: provide a stub so the code compiles
