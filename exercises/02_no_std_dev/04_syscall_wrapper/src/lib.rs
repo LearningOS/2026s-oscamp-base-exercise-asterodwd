@@ -122,7 +122,7 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     //   - inlateout("rax") id => ret
     //   - in("rdi") arg0, in("rsi") arg1, in("rdx") arg2
     //   - out("rcx") _, out("r11") _
-    let ret: isize;
+    let mut ret: isize = 0;
     asm! (
         "syscall",
         inout("rax") id as isize=>ret,
@@ -144,7 +144,7 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     //   - in("x8") id
     //   - inlateout("x0") arg0 => ret
     //   - in("x1") arg1, in("x2") arg2
-    let ret: isize;
+    let mut ret: isize = 0;
 
     asm!(
         "svc #0",
