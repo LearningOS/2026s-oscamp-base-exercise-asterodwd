@@ -194,20 +194,13 @@ const NATIVE_SYS_EXIT: usize = 0;
 /// Write data from `buf` to file descriptor `fd`.
 pub fn sys_write(fd: usize, buf: &[u8]) -> isize {
     // TODO: Call syscall3 to implement write
-    unsafe {
-        syscall3(
-            NATIVE_SYS_WRITE,
-            fd,
-            buf.as_ptr() as usize,
-            buf.iter().len(),
-        )
-    }
+    unsafe { syscall3(NATIVE_SYS_WRITE, fd, buf.as_ptr() as usize, buf.len()) }
 }
 
 /// Read data from file descriptor `fd` into `buf`.
 pub fn sys_read(fd: usize, buf: &mut [u8]) -> isize {
     // TODO: Call syscall3 to implement read
-    unsafe { syscall3(NATIVE_SYS_READ, fd, buf.as_ptr() as usize, buf.iter().len()) }
+    unsafe { syscall3(NATIVE_SYS_READ, fd, buf.as_mut_ptr() as usize, buf.len()) }
 }
 
 /// Close file descriptor `fd`.
@@ -219,8 +212,10 @@ pub fn sys_close(fd: usize) -> isize {
 /// Terminate the current process.
 pub fn sys_exit(code: i32) -> ! {
     // TODO: Call syscall3 to implement exit
-    unsafe { syscall3(NATIVE_SYS_EXIT, code as usize, 0, 0) };
-    panic!("never come here")
+    unsafe {
+        syscall3(NATIVE_SYS_EXIT, code as usize, 0, 0);
+        core::hint::unreachable_unchecked();
+    };
 }
 
 // ============================================================
