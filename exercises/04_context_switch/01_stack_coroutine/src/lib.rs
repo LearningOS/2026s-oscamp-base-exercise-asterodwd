@@ -62,12 +62,8 @@ impl TaskContext {
     /// - Set `sp = stack_top` with 16-byte alignment (RISC-V ABI requires 16-byte aligned stack at function entry).
     /// - Leave `s0`–`s11` zero; they will be loaded on switch.
     pub fn init(&mut self, stack_top: usize, entry: usize) {
-        unsafe {
-            let stack_ptr = stack_top as *mut usize;
-            // riscv64 first sub pointer, then push stack
-            *stack_ptr.sub(1) = entry;
-        }
-        self.sp = (stack_top - 8) as u64;
+        self.ra = entry;
+        self.sp = stack_top as u64;
     }
 }
 
@@ -77,13 +73,20 @@ impl TaskContext {
 ///
 /// Must be `#[unsafe(naked)]` to prevent the compiler from generating a prologue/epilogue.
 pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
-    asm!(
-        "mov [rdi+0x00], rsp",  "mov [rdi+0x08], rbx",  // ... save to old
-        "mov rsp, [rsi+0x00]",  "mov rbx, [rsi+0x08]",  // ... restore from new
-        "ret",                  // pop stack top address and jump
-        in("rdi") old as *mut _ as u64,
-        in("rsi") new as *const _ as u64,
-        clobber_abi("C"),
+    core::arch::asm!(
+        // 保存旧上下文 (a0 是第一个参数，指向 old)
+        "sd sp, 0(a0)",
+        "sd ra, 8(a0)",
+        "sd s0, 16(a0)",
+        // ... 保存 s1-s11 ...
+
+        // 加载新上下文 (a1 是第二个参数，指向 new)
+        "ld sp, 0(a1)",
+        "ld ra, 8(a1)",
+        "ld s0, 16(a1)",
+        // ... 加载 s1-s11 ...
+        "ret", // 此时 ra 已经是 entry 了，ret 直接跳转
+        options(noreturn)
     );
 }
 
