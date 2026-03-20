@@ -15,6 +15,8 @@
 
 #![cfg(target_arch = "riscv64")]
 
+use std::arch::naked_asm;
+
 /// Saved register state for one task (riscv64). Layout must match the offsets used in the asm below: for one task (riscv64). Layout must match the offsets used in the asm below:
 /// `sp` at 0, `ra` at 8, then `s0`–`s11` at 16, 24, … 104.
 #[repr(C)]
@@ -62,7 +64,7 @@ impl TaskContext {
     /// - Set `sp = stack_top` with 16-byte alignment (RISC-V ABI requires 16-byte aligned stack at function entry).
     /// - Leave `s0`–`s11` zero; they will be loaded on switch.
     pub fn init(&mut self, stack_top: usize, entry: usize) {
-        self.ra = entry;
+        self.ra = entry as u64;
         self.sp = stack_top as u64 & !15;
         self.s0 = 0;
         self.s1 = 0;
@@ -84,8 +86,9 @@ impl TaskContext {
 /// In asm: store `sp`, `ra`, `s0`–`s11` to `[a0]` (old), load from `[a1]` (new), zero `a0`/`a1` so we do not leak pointers into the new context, then `ret`.
 ///
 /// Must be `#[unsafe(naked)]` to prevent the compiler from generating a prologue/epilogue.
-pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
-    core::arch::asm!(
+#[unsafe(naked)]
+pub unsafe extern "C" fn switch_context(old: &mut TaskContext, new: &TaskContext) {
+    naked_asm!(
         // 保存旧上下文 (a0 是第一个参数，指向 old)
         "sd sp, 0(a0)",
         "sd ra, 8(a0)",
@@ -117,7 +120,7 @@ pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
         "ld s8, 80(a1)",
         "ld s9, 88(a1)",
         "ld s10, 96(a1)",
-        "ld s11, 104a1)",
+        "ld s11, 104(a1)",
         "li a0, 0",
         "li a1, 0",
         "ret", // 此时 ra 已经是 entry 了，ret 直接跳转
