@@ -63,7 +63,19 @@ impl TaskContext {
     /// - Leave `s0`–`s11` zero; they will be loaded on switch.
     pub fn init(&mut self, stack_top: usize, entry: usize) {
         self.ra = entry;
-        self.sp = stack_top as u64;
+        self.sp = stack_top as u64 & !15;
+        self.s0 = 0;
+        self.s1 = 0;
+        self.s2 = 0;
+        self.s3 = 0;
+        self.s4 = 0;
+        self.s5 = 0;
+        self.s6 = 0;
+        self.s7 = 0;
+        self.s8 = 0;
+        self.s9 = 0;
+        self.s10 = 0;
+        self.s11 = 0;
     }
 }
 
@@ -78,13 +90,36 @@ pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
         "sd sp, 0(a0)",
         "sd ra, 8(a0)",
         "sd s0, 16(a0)",
+        "sd s1, 24(a0)",
+        "sd s2, 32(a0)",
+        "sd s3, 40(a0)",
+        "sd s4, 48(a0)",
+        "sd s5, 56(a0)",
+        "sd s6, 64(a0)",
+        "sd s7, 72(a0)",
+        "sd s8, 80(a0)",
+        "sd s9, 88(a0)",
+        "sd s10, 96(a0)",
+        "sd s11, 104(a0)",
         // ... 保存 s1-s11 ...
 
         // 加载新上下文 (a1 是第二个参数，指向 new)
         "ld sp, 0(a1)",
         "ld ra, 8(a1)",
         "ld s0, 16(a1)",
-        // ... 加载 s1-s11 ...
+        "ld s1, 24(a1)",
+        "ld s2, 32(a1)",
+        "ld s3, 40(a1)",
+        "ld s4, 48(a1)",
+        "ld s5, 56(a1)",
+        "ld s6, 64(a1)",
+        "ld s7, 72(a1)",
+        "ld s8, 80(a1)",
+        "ld s9, 88(a1)",
+        "ld s10, 96(a1)",
+        "ld s11, 104a1)",
+        "li a0, 0",
+        "li a1, 0",
         "ret", // 此时 ra 已经是 entry 了，ret 直接跳转
         options(noreturn)
     );
@@ -96,9 +131,10 @@ const STACK_SIZE: usize = 1024 * 64;
 /// (stack grows down). The buffer must be kept alive for the lifetime of the context using this stack.
 pub fn alloc_stack() -> (Vec<u8>, usize) {
     // todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
-    let buffer = vec![u8; STACK_SIZE];
+    let buffer = vec![0u8; STACK_SIZE];
+    let stack_top_raw = buffer.as_ptr() as usize + STACK_SIZE;
 
-    (buffer, buffer.as_ptr() as usize + STACK_SIZE)
+    (buffer, stack_top_raw & !15)
 }
 
 #[cfg(test)]
