@@ -15,8 +15,6 @@
 
 #![cfg(target_arch = "riscv64")]
 
-use std::arch::naked_asm;
-
 /// Saved register state for one task (riscv64). Layout must match the offsets used in the asm below: for one task (riscv64). Layout must match the offsets used in the asm below:
 /// `sp` at 0, `ra` at 8, then `s0`–`s11` at 16, 24, … 104.
 #[repr(C)]
@@ -86,6 +84,7 @@ impl TaskContext {
 /// In asm: store `sp`, `ra`, `s0`–`s11` to `[a0]` (old), load from `[a1]` (new), zero `a0`/`a1` so we do not leak pointers into the new context, then `ret`.
 ///
 /// Must be `#[unsafe(naked)]` to prevent the compiler from generating a prologue/epilogue.
+use core::arch::naked_asm;
 #[unsafe(naked)]
 pub unsafe extern "C" fn switch_context(old: &mut TaskContext, new: &TaskContext) {
     naked_asm!(
