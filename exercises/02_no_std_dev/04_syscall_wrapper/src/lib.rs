@@ -123,9 +123,9 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     //   - in("rdi") arg0, in("rsi") arg1, in("rdx") arg2
     //   - out("rcx") _, out("r11") _
     let mut ret: isize = 0;
-    asm! (
+    core::arch::asm! (
         "syscall",
-        inout("rax") id as isize=>ret,
+        inlateout("rax") id as isize=>ret,
         in("rdi") arg0,
         in("rsi") arg1,
         in("rdx") arg2,
@@ -138,43 +138,15 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isize {
-    // TODO: Implement aarch64 syscall using core::arch::asm!
-    // Hints:
-    //   - "svc #0" instruction
-    //   - in("x8") id
-    //   - inlateout("x0") arg0 => ret
-    //   - in("x1") arg1, in("x2") arg2
     let mut ret: isize = 0;
 
-    asm!(
+    core::arch::asm!(
         "svc #0",
         in("x8") id,
-        inout("x0") arg0 as isize => ret,
+        inlateout("x0") arg0 as isize => ret,
         in("x1") arg1,
         in("x2") arg2,
 
-    );
-
-    ret
-}
-
-#[cfg(all(target_arch = "riscv64", target_os = "linux"))]
-pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isize {
-    // TODO: Implement aarch64 syscall using core::arch::asm!
-    // Hints:
-    //   - "svc #0" instruction
-    //   - in("x8") id
-    //   - inlateout("x0") arg0 => ret
-    //   - in("x1") arg1, in("x2") arg2
-    let mut ret: isize = 0;
-
-    asm!(
-        "ecall",
-        in("a7") id,
-        inout("a0") arg0 as isize => ret,
-        in("a1") arg1,
-        in("a2") arg2,
-        options(nostack, preserves_flags)
     );
 
     ret
