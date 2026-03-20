@@ -123,7 +123,6 @@ pub unsafe extern "C" fn switch_context(old: &mut TaskContext, new: &TaskContext
         "li a0, 0",
         "li a1, 0",
         "ret", // 此时 ra 已经是 entry 了，ret 直接跳转
-        options(noreturn)
     );
 }
 
@@ -134,9 +133,10 @@ const STACK_SIZE: usize = 1024 * 64;
 pub fn alloc_stack() -> (Vec<u8>, usize) {
     // todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
     let buffer = vec![0u8; STACK_SIZE];
-    let stack_top_raw = buffer.as_ptr() as usize + STACK_SIZE;
+    let stack_top_raw = (buffer.as_ptr() as usize) + STACK_SIZE;
+    let stack_top = stack_top_raw & !((1 << 4) - 1);
 
-    (buffer, stack_top_raw & !15)
+    (buffer, stack_top)
 }
 
 #[cfg(test)]
